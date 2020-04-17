@@ -1,171 +1,128 @@
 package com.agnitt.vdt.back.data
 
 import com.agnitt.vdt.back.models.*
-import com.agnitt.vdt.back.utils.*
+import com.agnitt.vdt.back.utils.addIfNotNull
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class PageService {
     @Autowired
-    var pageRepo: PageRepository? = null
+    lateinit var pageRepo: PageRepository
 
     @Autowired
-    var chartRepo: ChartRepository? = null
+    lateinit var chartRepo: ChartRepository
 
     @Autowired
-    var tableRepo: TableRepository? = null
+    lateinit var tableRepo: TableRepository
 
     @Autowired
-    var sideItemRepo: SideItemRepository? = null
+    lateinit var sideItemRepo: SideItemRepository
 
     /** get **/
-
-    fun getAllPages(): List<PageModel> = arrayListOf<PageModel>().apply { pageRepo?.findAll()?.forEach { add(it) } }
-    fun getPageModelById(id: Long): PageModel? = pageRepo?.findByIdOrNull(id)
-    fun getPageById(pageId: Long): Page? = getPageModelById(pageId)?.let {
-        Page(it.id, it.name, it.type,
-                mainItems = mutableListOf<MainContentItem>().apply {
-                    it.mainItemsIds.forEach { id ->
-                        this@apply.addIfNotNull(when (it.type) {
-                            "chart" -> getChartById(id)
-                            "table" -> getTableById(id)
-                            else -> null
-                        })
-                    }
-                },
-                sideItems = mutableListOf<SideContentItem>().apply {
-                    it.sideItemsIds.forEach { id -> this@apply.addIfNotNull(getSideItemById(id)) }
-                }
-        )
+    fun getAllPages(): MutableList<Page> = mutableListOf<Page>().apply {
+        pageRepo.findAll().forEach { addIfNotNull(it.toPage(this@PageService)) }
     }
 
-    fun getChartById(id: Long): Chart? = chartRepo?.findByIdOrNull(id)
-    fun getChartsByOwner(owner: Long): List<Chart>? = getPageById(owner)?.mainItems?.filterIsInstance<Chart>()
+    fun getAllPageModels(): MutableList<PageModel> = mutableListOf<PageModel>().apply {
+        pageRepo.findAll().forEach { add(it) }
+    }
 
-    fun getTableById(id: Long): Table? = tableRepo?.findByIdOrNull(id)
-    fun getTablesByOwner(owner: Long): List<Table>? = getPageById(owner)?.mainItems?.filterIsInstance<Table>()
+    final inline fun <reified T> getById(id: Long): T? = when (T::class) {
+        PageModel::class -> pageRepo.findByIdOrNull(id) as T?
+        Chart::class -> chartRepo.findByIdOrNull(id) as T?
+        Table::class -> tableRepo.findByIdOrNull(id) as T?
+        SideItem::class -> sideItemRepo.findByIdOrNull(id) as T?
+        Page::class -> (pageRepo.findByIdOrNull(id))?.toPage(this) as T?
+        else -> null
+    }
 
-    fun getSideItemById(id: Long): SideItem? = sideItemRepo?.findByIdOrNull(id)
-    fun getSideItemsByOwner(owner: Long): List<SideItem>? = getPageById(owner)?.sideItems?.filterIsInstance<SideItem>()
+    final inline fun <reified T> getByOwner(owner: Long): MutableList<T>? = getById<Page>(owner)?.let {
+        when (T::class) {
+            Chart::class, Table::class -> it.mainItems
+            SideItem::class -> it.sideItems
+            else -> null
+        }
+    }?.filterIsInstance<T>()?.toMutableList()
 
-    fun getConnectionItemAfterChange(sideItemId: Long, currentValue: Float): MainContentItem? {
-        val sideItem = getSideItemById(sideItemId) ?: return null
-        sideItem.currentValue = currentValue
-        update(sideItem)
-        val connectionItemId = sideItem.connectionItemId
-        var connectionItem = getChartById(connectionItemId) ?: getTableById(connectionItemId) ?: return null
-        return connectionItem.change(sideItem.name, currentValue)
+    fun getRelatedItemsAfterChange(sideItemId: Long, currentValue: Float): MutableList<MainContentItem>? {
+        val sideItem = getById<SideItem>(sideItemId)?.apply {
+            this.currentValue = currentValue
+            update(this)
+        } ?: return null
+        val relatedItemIds = sideItem.relatedItemId
+        val sideItemName = sideItem.name
+
+        return mutableListOf<MainContentItem>().apply {
+            relatedItemIds.forEach {
+                val relatedItem = getById<Chart>(it) ?: getById<Table>(it)
+                this.addIfNotNull(relatedItem?.change(sideItemName, currentValue))
+            }
+        }
     }
 
     /** insert **/
+    @Transactional
+    final inline fun <reified T> insert(item: T): Long = when (item) {
+        is PageModel -> pageRepo.save(item).id
+        is Chart -> chartRepo.save(item).id
+        is Table -> tableRepo.save(item).id
+        is SideItem -> sideItemRepo.save(item).id
+        else -> null
+    } ?: 0
 
-    fun insert(page: PageModel): Long {
-        pageRepo?.save(page)
-        return page.id
-    }
-
-    fun insert(vararg pages: PageModel): List<Long> = mutableListOf<Long>().apply {
-        pages.forEach {
-            pageRepo?.save(it)
-            this.add(it.id)
-        }
-    }
-
-    fun insert(chart: Chart): Long {
-        chartRepo?.save(chart)
-        return chart.id
-    }
-
-    fun insert(vararg charts: Chart): List<Long> = mutableListOf<Long>().apply {
-        charts.forEach {
-            chartRepo?.save(it)
-            this.add(it.id)
-        }
-    }
-
-    fun insert(table: Table): Long {
-        tableRepo?.save(table)
-        return table.id
-    }
-
-    fun insert(vararg tables: Table): List<Long> = mutableListOf<Long>().apply {
-        tables.forEach {
-            tableRepo?.save(it)
-            this.add(it.id)
-        }
-    }
-
-    fun insert(sideItem: SideItem): Long {
-        sideItemRepo?.save(sideItem)
-        return sideItem.id
-    }
-
-    fun insert(vararg sideItems: SideItem): List<Long> = mutableListOf<Long>().apply {
-        sideItems.forEach {
-            sideItemRepo?.save(it)
-            this.add(it.id)
-        }
+    @Transactional
+    final inline fun <reified T> insert(vararg items: T): MutableList<Long> = mutableListOf<Long>().apply {
+        items.forEach { addIfNotNull(insert(it)) }
     }
 
     /** update **/
-    fun update(pageModel: PageModel): Boolean = pageRepo?.let {
-        if (it.existsById(pageModel.id)) it.deleteById(pageModel.id)
-        it.save(pageModel)
-        it.existsById(pageModel.id)
-    } ?: false
+    @Transactional
+    final inline fun <reified T> update(item: T) = when (item) {
+        is PageModel -> pageRepo.save(item)
+        is Chart -> chartRepo.save(item)
+        is Table -> tableRepo.save(item)
+        is SideItem -> sideItemRepo.save(item)
+        else -> null
+    } as T?
 
-    fun update(chart: Chart): Boolean = chartRepo?.let {
-        if (it.existsById(chart.id)) it.deleteById(chart.id)
-        it.save(chart)
-        it.existsById(chart.id)
-    } ?: false
-
-    fun update(table: Table): Boolean = tableRepo?.let {
-        if (it.existsById(table.id)) it.deleteById(table.id)
-        it.save(table)
-        it.existsById(table.id)
-    } ?: false
-
-    fun update(item: SideItem): Boolean = sideItemRepo?.let {
-        if (it.existsById(item.id)) it.deleteById(item.id)
-        it.save(item)
-        it.existsById(item.id)
-    } ?: false
+    @Transactional
+    final inline fun <reified T> update(vararg items: T) = items.forEach { update(it) }
 
     /** delete **/
 
-    fun delete(pageModel: PageModel): Boolean = pageModel.let { pm ->
-        val type = pm.type
-        pm.mainItemsIds.forEach { if (type == "chart") deleteChartById(it) else if (type == "table") deleteTableById(it) }
-        pm.sideItemsIds.forEach { deleteSideItemById(it) }
-        deletePageModelById(pm.id)
+    fun deleteAllPages(): String {
+        var isComplete = true
+        listOf(pageRepo, chartRepo, tableRepo, sideItemRepo).forEach { repo ->
+            repo.deleteAll()
+            if (repo.count() != 0.toLong()) isComplete = false
+        }
+        return if (isComplete) "Mission complete" else "Mission failed"
     }
 
-    fun deletePageModelById(id: Long): Boolean = pageRepo?.let {
-        it.deleteById(id)
-        !it.existsById(id)
-    } ?: false
+    final inline fun <reified T> delete(item: T) = when (item) {
+        is Chart -> chartRepo.delete(item)
+        is Table -> tableRepo.delete(item)
+        is SideItem -> sideItemRepo.delete(item)
+        is PageModel -> (item as PageModel).let { pm ->
+            val type = pm.type
+            pm.mainItemsIds.forEach { if (type == "chart") deleteById<Chart>(it) else if (type == "table") deleteById<Table>(it) }
+            pm.sideItemsIds.forEach { deleteById<SideItem>(it) }
+            pageRepo.delete(pm)
+        }
+        else -> null
+    }
 
-    fun delete(chart: Chart): Boolean = deleteChartById(chart.id)
-    fun deleteChartById(id: Long): Boolean = chartRepo?.let {
-        it.deleteById(id)
-        !it.existsById(id)
-    } ?: false
+    final inline fun <reified T> deleteById(id: Long) = when (T::class) {
+        PageModel::class -> pageRepo
+        Chart::class -> chartRepo
+        Table::class -> tableRepo
+        SideItem::class -> sideItemRepo
+        else -> null
+    }?.deleteById(id)
 
-    fun delete(table: Table): Boolean = deleteTableById(table.id)
-    fun deleteTableById(id: Long): Boolean = tableRepo?.let {
-        it.deleteById(id)
-        !it.existsById(id)
-    } ?: false
 
-    fun delete(item: SideItem): Boolean = deleteSideItemById(item.id)
-    fun deleteSideItemById(id: Long): Boolean = sideItemRepo?.let {
-        it.deleteById(id)
-        !it.existsById(id)
-    } ?: false
-
-    /** usefull funs **/
 
 }

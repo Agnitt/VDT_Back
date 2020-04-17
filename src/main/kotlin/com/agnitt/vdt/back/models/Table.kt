@@ -1,21 +1,20 @@
 package com.agnitt.vdt.back.models
 
 import com.agnitt.vdt.back.utils.*
-import javax.persistence.ElementCollection
-import javax.persistence.Entity
-import javax.persistence.GeneratedValue
-import javax.persistence.Id
+import javax.persistence.*
 import javax.persistence.Table
+
+typealias mTable = com.agnitt.vdt.back.models.Table
 
 @Entity
 @Table(name = T_TABLES)
 data class Table(
-        @Id @GeneratedValue override val id: Long,
+        @Id @GeneratedValue(strategy = GenerationType.SEQUENCE) override val id: Long,
         override val owner: Long,
-        @ElementCollection var dataList: List<Float>
+        @ElementCollection var dataList: MutableList<Float>
 ) : MainContentItem() {
 
-    override fun change(sideItemName: String, currentValue: Float): com.agnitt.vdt.back.models.Table {
+    override fun change(sideItemName: String, currentValue: Float): mTable {
         val newList = mutableListOf<Float>()
         dataList.forEach { newList.add(it + currentValue * 5) }
         dataList = newList

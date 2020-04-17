@@ -7,13 +7,13 @@ import javax.persistence.Table
 @Entity
 @Table(name = T_CHARTS)
 data class Chart(
-        @Id @GeneratedValue override val id: Long,
+        @Id @GeneratedValue(strategy = GenerationType.SEQUENCE ) override val id: Long,
         override val owner: Long,
         val name: String,
         val measure: String,
         val type: String,
-        @ElementCollection var basicDataList: List<Float>,
-        @ElementCollection var modelDataList: List<Float>,
+        @ElementCollection var basicDataList: MutableList<Float>,
+        @ElementCollection var modelDataList: MutableList<Float>,
         var strategyData: Float
 ) : MainContentItem() {
 

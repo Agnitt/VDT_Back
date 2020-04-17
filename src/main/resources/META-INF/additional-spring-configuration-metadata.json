@@ -1,0 +1,13 @@
+{
+  "properties": [
+    {
+      "name": "spring.datasource.url=jdbc:h2:file:/data/back_db",
+      "type": "java.lang.String",
+      "description": "Description for spring.datasource.url=jdbc:h2:file:/data/back_db."
+    },
+    {
+      "name": "spring.h2.console.enabled=true",
+      "type": "java.lang.String",
+      "description": "Description for spring.h2.console.enabled=true."
+    }
+  ] }
