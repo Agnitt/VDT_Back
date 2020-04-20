@@ -12,22 +12,22 @@ data class PageModel(
         val name: String,
         val type: String,
         @ElementCollection
-        var mainItemsIds: MutableList<Long>,
+        var mainItemsIds: MutableList<Long>?,
         @ElementCollection
-        var sideItemsIds: MutableList<Long>
+        var sideItemsIds: MutableList<Long>?
 ) {
     fun toPage(service: PageService) = Page(id, name, type,
             mainItems = mutableListOf<MainContentItem>().apply {
-                mainItemsIds.forEach { id ->
+                mainItemsIds?.forEach { id ->
                     this@apply.addIfNotNull(when (type) {
-                        "chart" -> service.getById<Chart>(id)
-                        "table" -> service.getById<com.agnitt.vdt.back.models.Table>(id)
+                        Types.CHART.name -> service.getById<Chart>(id)
+                        Types.TABLE.name -> service.getById<com.agnitt.vdt.back.models.Table>(id)
                         else -> null
                     })
                 }
             },
             sideItems = mutableListOf<SideContentItem>().apply {
-                sideItemsIds.forEach { id -> this@apply.addIfNotNull(service.getById<SideItem>(id)) }
+                sideItemsIds?.forEach { id -> this@apply.addIfNotNull(service.getById<SideItem>(id)) }
             }
     )
 }

@@ -1,6 +1,7 @@
 package com.agnitt.vdt.back.controllers
 
 import com.agnitt.vdt.back.data.PageService
+import com.agnitt.vdt.back.data.fill
 import com.agnitt.vdt.back.models.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
@@ -13,14 +14,44 @@ class Controller {
     @Autowired
     lateinit var pageService: PageService
 
+    @GetMapping("/fill_base")
+    fun fillBase() = pageService.run{
+        deleteAllPages()
+        fill()
+        getAllPageModels()
+    }
+
+    /** get **/
+
     @GetMapping("/get/page/all")
     fun getAllPages() = pageService.getAllPages()
 
     @GetMapping("/get/page/model/all")
     fun getAllPageModels() = pageService.getAllPageModels()
 
-    @GetMapping("/get/page/{id}")
-    fun getPage(@PathVariable("id") id: Long) = pageService.getById<Page>(id)
+    @RequestMapping("/get/{type}/{id}")
+    fun getItemById(@PathVariable id: Long, @PathVariable type: String): Any? = when (type) {
+        Types.PAGE_MODEL.name -> pageService.getById<PageModel>(id)
+        Types.PAGE.name -> pageService.getById<Page>(id)
+        Types.CHART.name -> pageService.getById<Chart>(id)
+        Types.TABLE.name -> pageService.getById<Table>(id)
+        Types.SIDE_ITEM.name -> pageService.getById<SideItem>(id)
+        else -> "[ERROR] Invalid type specified: $type\nCorrect types: ${Types.values().joinToString(", ") { it.name }}}"
+    } ?: "[ERROR] Invalid id specified: $id"
+
+
+    /** change **/
+
+    @RequestMapping("/change/{id}/{currentValue}")
+    fun changeItemById(@PathVariable id: Long, @PathVariable currentValue: Float): Any? {
+        val result: MutableList<MainContentItem>? = pageService.getRelatedItemsAfterChange(id, currentValue)
+        return when {
+            result == null -> "[ERROR] Invalid id specified: $id"
+            result.isEmpty() -> null
+            else -> result
+        }
+    }
+
 
     @RequestMapping("/delete/page/{id}")
     fun deletePage(@PathVariable("id") id: Long) = pageService.deleteById<PageModel>(id)
@@ -30,6 +61,9 @@ class Controller {
 
 //    @RequestMapping("/save/page")
 //    fun savePage(@RequestBody page: PageModel): Long = pageService.insert(page)
+
+
+    /** tests **/
 
     @RequestMapping("/test/init")
     fun test(): Boolean {
@@ -48,8 +82,8 @@ class Controller {
         val chart = Chart(0.toLong(), idOwner, "hi", "lol", "main", mutableListOf(2f, 4f, 5f), mutableListOf(12f, 14f, 15f), 20f)
         val chart1 = Chart(0.toLong(), idOwner1, "hi", "lol", "main", mutableListOf(22f, 24f, 25f), mutableListOf(212f, 214f, 215f), 220f)
 
-        val sideItem = SideItem(0.toLong(), idOwner, "switch_1", "bool", "switch", mutableListOf(0f, 1f), 1f, mutableListOf(chart.id))
-        val sideItem1 = SideItem(0.toLong(), idOwner1, "switch_1", "bool", "switch", mutableListOf(20f, 21f), 21f, mutableListOf(chart.id))
+        val sideItem = SideItem(0.toLong(), idOwner, "switch_1", "switch", mutableListOf(0f, 1f), 4, 1f, mutableListOf(chart.id))
+        val sideItem1 = SideItem(0.toLong(), idOwner1, "switch_1", "switch", mutableListOf(20f, 21f), 4, 21f, mutableListOf(chart.id))
 
         page.mainItemsIds = pageService.insert(table, chart)
         page.sideItemsIds = mutableListOf(pageService.insert(sideItem))
@@ -81,11 +115,18 @@ class Controller {
         return pageService.update(item)
     }
 
-    @RequestMapping("/test/get/table/{id}")
-    fun testGetTable(@PathVariable("id") id: Long) = pageService.getById<Table>(id)
+//    @RequestMapping("/test/get/table/{id}")
+//    fun testGetTable(@PathVariable("id") id: Long) = pageService.getById<Table>(id)
 
-    @RequestMapping("/test/get/side_item/{id}")
-    fun testGetSideItem(@PathVariable("id") id: Long) = pageService.getById<SideItem>(id)
+
+//            when (type) {
+//        Types.PAGE_MODEL.value -> pageService.getById<PageModel>(id)
+//        Types.PAGE.value -> pageService.getById<Page>(id)
+//        Types.CHART.value -> pageService.getById<Chart>(id)
+//        Types.TABLE.value -> pageService.getById<Table>(id)
+//        Types.SIDE_ITEM.value -> pageService.getById<SideItem>(id)
+//        else -> "[ERROR] Invalid type specified: $type\nCorrect types: ${Types.values().joinToString(", ") { it.value }}}"
+//    } ?: "[ERROR] Invalid id specified: $id"
 
     /**
     @RequestMapping("/delete/file/database/{name}")

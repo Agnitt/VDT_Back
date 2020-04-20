@@ -4,7 +4,7 @@ import javax.persistence.Table
 
 abstract class MainContentItem {
     abstract val id: Long
-    abstract val owner: Long
+    abstract var owner: Long
 
     abstract fun change(sideItemName: String, currentValue:Float): MainContentItem
 }
@@ -15,7 +15,7 @@ abstract class MainContentItem {
 
 abstract class SideContentItem {
     abstract val id: Long
-    abstract val owner: Long
+    abstract var owner: Long
 }
 
 //fun MutableList<SideContentItem>.addIfNotNull(item: SideContentItem?) {

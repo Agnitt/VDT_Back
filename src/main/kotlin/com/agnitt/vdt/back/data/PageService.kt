@@ -56,7 +56,7 @@ class PageService {
         val sideItemName = sideItem.name
 
         return mutableListOf<MainContentItem>().apply {
-            relatedItemIds.forEach {
+            relatedItemIds?.forEach {
                 val relatedItem = getById<Chart>(it) ?: getById<Table>(it)
                 this.addIfNotNull(relatedItem?.change(sideItemName, currentValue))
             }
@@ -108,8 +108,8 @@ class PageService {
         is SideItem -> sideItemRepo.delete(item)
         is PageModel -> (item as PageModel).let { pm ->
             val type = pm.type
-            pm.mainItemsIds.forEach { if (type == "chart") deleteById<Chart>(it) else if (type == "table") deleteById<Table>(it) }
-            pm.sideItemsIds.forEach { deleteById<SideItem>(it) }
+            pm.mainItemsIds?.forEach { if (type == "chart") deleteById<Chart>(it) else if (type == "table") deleteById<Table>(it) }
+            pm.sideItemsIds?.forEach { deleteById<SideItem>(it) }
             pageRepo.delete(pm)
         }
         else -> null
