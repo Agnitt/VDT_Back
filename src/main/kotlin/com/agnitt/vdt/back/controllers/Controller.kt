@@ -1,21 +1,26 @@
 package com.agnitt.vdt.back.controllers
 
 import com.agnitt.vdt.back.data.PageService
+import com.agnitt.vdt.back.data.TemporaryStorage
 import com.agnitt.vdt.back.data.fill
 import com.agnitt.vdt.back.models.*
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.bind.annotation.*
-import java.nio.file.Files
-import java.nio.file.Paths
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 
 @RestController
 class Controller {
+    init {
+        TemporaryStorage()
+    }
 
     @Autowired
     lateinit var pageService: PageService
 
     @GetMapping("/fill_base")
-    fun fillBase() = pageService.run{
+    fun fillBase() = pageService.run {
         deleteAllPages()
         fill()
         getAllPageModels()
@@ -43,25 +48,14 @@ class Controller {
     /** change **/
 
     @RequestMapping("/change/{id}/{currentValue}")
-    fun changeItemById(@PathVariable id: Long, @PathVariable currentValue: Float): Any? {
-        val result: MutableList<MainContentItem>? = pageService.getRelatedItemsAfterChange(id, currentValue)
-        return when {
-            result == null -> "[ERROR] Invalid id specified: $id"
-            result.isEmpty() -> null
-            else -> result
-        }
-    }
-
+    fun changeItemById(@PathVariable id: Long, @PathVariable currentValue: Float) = pageService
+            .getRelatedItemsAfterChange(id, currentValue) ?: "[ERROR] Invalid id specified: $id"
 
     @RequestMapping("/delete/page/{id}")
     fun deletePage(@PathVariable("id") id: Long) = pageService.deleteById<PageModel>(id)
 
     @RequestMapping("/delete/page/all")
     fun deleteAllPages() = pageService.deleteAllPages()
-
-//    @RequestMapping("/save/page")
-//    fun savePage(@RequestBody page: PageModel): Long = pageService.insert(page)
-
 
     /** tests **/
 
@@ -70,8 +64,8 @@ class Controller {
         var idOwner = 0.toLong()
         var idOwner1 = 0.toLong()
 
-        var page = PageModel(idOwner, "start", "table", mutableListOf(), mutableListOf())
-        var page1 = PageModel(idOwner1, "start", "chart", mutableListOf(), mutableListOf())
+        val page = PageModel(idOwner, "start", "table", mutableListOf(), mutableListOf())
+        val page1 = PageModel(idOwner1, "start", "chart", mutableListOf(), mutableListOf())
 
         idOwner = pageService.insert(page)
         idOwner1 = pageService.insert(page1)

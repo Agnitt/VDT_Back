@@ -6,6 +6,12 @@ fun <T> MutableList<T>.addIfNotNull(item: T?) {
     if (item != null) add(item)
 }
 
+fun <T> MutableList<T>.addAllIfNotNull(collection: Collection<T>?): MutableList<T>? {
+    if (collection == null) return null
+    addAll(collection)
+    return this
+}
+
 val randomMutableListFloat =
         { size: Int, start: Int, end: Int -> MutableList(size) { Random.nextInt(start, end).toFloat() } }
 

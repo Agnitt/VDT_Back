@@ -1,5 +1,6 @@
 package com.agnitt.vdt.back.data
 
+import com.agnitt.vdt.back.data.TemporaryStorage.Companion.temp
 import com.agnitt.vdt.back.models.*
 import com.agnitt.vdt.back.utils.addIfNotNull
 import org.springframework.beans.factory.annotation.Autowired
@@ -48,17 +49,14 @@ class PageService {
     }?.filterIsInstance<T>()?.toMutableList()
 
     fun getRelatedItemsAfterChange(sideItemId: Long, currentValue: Float): MutableList<MainContentItem>? {
-        val sideItem = getById<SideItem>(sideItemId)?.apply {
-            this.currentValue = currentValue
-            update(this)
-        } ?: return null
+        val sideItem = getById<SideItem>(sideItemId) ?: return null
         val relatedItemIds = sideItem.relatedItemId
         val sideItemName = sideItem.name
-
+        val value = currentValue - temp.getAndUpdate(sideItemId, currentValue, sideItem.dataList[0])
         return mutableListOf<MainContentItem>().apply {
             relatedItemIds?.forEach {
                 val relatedItem = getById<Chart>(it) ?: getById<Table>(it)
-                this.addIfNotNull(relatedItem?.change(sideItemName, currentValue))
+                this.addIfNotNull(relatedItem?.change(sideItemName, value))
             }
         }
     }
@@ -81,12 +79,12 @@ class PageService {
     /** update **/
     @Transactional
     final inline fun <reified T> update(item: T) = when (item) {
-        is PageModel -> pageRepo.save(item)
-        is Chart -> chartRepo.save(item)
-        is Table -> tableRepo.save(item)
-        is SideItem -> sideItemRepo.save(item)
+        is PageModel -> pageRepo.saveAndFlush(item)
+        is Chart -> chartRepo.saveAndFlush(item)
+        is Table -> tableRepo.saveAndFlush(item)
+        is SideItem -> sideItemRepo.saveAndFlush(item)
         else -> null
-    } as T?
+    }
 
     @Transactional
     final inline fun <reified T> update(vararg items: T) = items.forEach { update(it) }
@@ -122,7 +120,6 @@ class PageService {
         SideItem::class -> sideItemRepo
         else -> null
     }?.deleteById(id)
-
 
 
 }

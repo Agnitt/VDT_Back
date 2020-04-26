@@ -1,6 +1,7 @@
 package com.agnitt.vdt.back.models
 
-import com.agnitt.vdt.back.utils.*
+import com.agnitt.vdt.back.data.TemporaryStorage.Companion.temp
+import com.agnitt.vdt.back.utils.T_TABLES
 import javax.persistence.*
 import javax.persistence.Table
 
@@ -13,15 +14,15 @@ data class Table(
         override var owner: Long,
         @ElementCollection var dataList: MutableList<Float>?
 ) : MainContentItem() {
-
     override fun change(sideItemName: String, currentValue: Float): mTable {
         val newList = mutableListOf<Float>()
-        dataList?.forEach { newList.add(it + currentValue * 5) }
-        dataList = newList
-        return this
+        val factor = temp.get(id, 0f)
+        dataList?.forEach { newList.add(it + factor + currentValue * 5) }
+        temp.update(id, factor + currentValue * 5)
+        return mTable(id, owner, newList)
     }
 
     override fun toString() = "\n[TABLE]\nid = $id\nowner = $owner\ndataList = $dataList"
 }
 
-fun initTable() = Table(0,0,null)
+fun initTable() = Table(0, 0, null)
